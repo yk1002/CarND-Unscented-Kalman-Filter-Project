@@ -26,12 +26,19 @@ std::string hasData(std::string s) {
   return "";
 }
 
-int main()
+int main(int argc, char** argv)
 {
   uWS::Hub h;
 
   // Create a Kalman Filter instance
-  UKF ukf;
+  double std_a = 3;
+  double std_yawdd = M_PI/4;
+  if (argc >= 3) {
+      sscanf(argv[1], "%lf", &std_a);
+      sscanf(argv[2], "%lf", &std_yawdd);
+  }
+
+  UKF ukf(std_a, std_yawdd);
 
   // used to compute the RMSE later
   Tools tools;
@@ -136,6 +143,11 @@ int main()
           msgJson["rmse_y"] =  RMSE(1);
           msgJson["rmse_vx"] = RMSE(2);
           msgJson["rmse_vy"] = RMSE(3);
+          // cout << "RMSE(x)=" << RMSE(0)
+          //      << ", RMSE(y)=" << RMSE(1)
+          //      << ", RMSE(vx)=" << RMSE(2)
+          //      << ", RMSE(vy)=" << RMSE(3)
+          //      << endl;
           auto msg = "42[\"estimate_marker\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);

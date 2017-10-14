@@ -28,7 +28,7 @@ struct UKF {
   const double std_radphi_; // Radar measurement noise standard deviation angle in rad
   const double std_radrd_ ; // Radar measurement noise standard deviation radius change in m/s
 
-  UKF();
+  UKF(double std_a, double std_yawdd);
 
   /**
    * ProcessMeasurement

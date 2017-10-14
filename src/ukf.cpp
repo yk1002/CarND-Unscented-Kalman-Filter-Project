@@ -20,7 +20,7 @@ void normalize_angle(VectorXd& v, int i) {
 /**
  * Initializes Unscented Kalman filter
  */
-UKF::UKF() :
+UKF::UKF(double std_a, double std_yawdd) :
     is_initialized_(false),
     use_laser_(true),
     use_radar_(true),
@@ -33,8 +33,8 @@ UKF::UKF() :
     P_(n_x_, n_x_),
     Xsig_pred_(n_x_, n_sigma_points_),
     previous_timestamp_(-1),
-    std_a_(3),           // unit: m/s^2
-    std_yawdd_(M_PI/4),  // unit: rad/s^2
+    std_a_(std_a),          // unit: m/s^2
+    std_yawdd_(std_yawdd),  // unit: rad/s^2
     std_laspx_(0.15),
     std_laspy_(0.15),
     std_radr_(0.3),
@@ -53,22 +53,25 @@ UKF::UKF() :
  */
 void UKF::ProcessMeasurement(MeasurementPackage measurement_pack) {
     if (!is_initialized_) {
-        double px, py;
+        double px, py, v, phi, d_phi;
         if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
             const double rho = measurement_pack.raw_measurements_[0];
-            const double phi = measurement_pack.raw_measurements_[1];
+            phi = measurement_pack.raw_measurements_[1];
             px = rho * cos(phi);
             py = rho * sin(phi);
+            v = 5.0;
+            d_phi = 0;
         }
         else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
             px = measurement_pack.raw_measurements_[0];
             py = measurement_pack.raw_measurements_[1];
+            v = 5.0;
+            phi = M_PI/2;
+            d_phi = 0;
         }
 
-        // TODO: choose resonably good initiali values for v, phi, and d_phi
-        x_ << px, py, 0.0, 0.0, 0.0;
+        x_ << px, py, v, phi, d_phi;
         
-        // TODO: is this good?
         P_.fill(0.0);
         for (int i = 0; i < n_x_; ++i)
             P_(i, i) = 1.0;
@@ -97,8 +100,8 @@ void UKF::ProcessMeasurement(MeasurementPackage measurement_pack) {
         UpdateLidar(measurement_pack);
     
     // print states
-    cout << "x_ = " << x_ << endl;
-    cout << "P_ = " << P_ << endl;
+    // cout << "x_ = " << x_ << endl;
+    // cout << "P_ = " << P_ << endl;
 }
 
 /**
@@ -259,11 +262,12 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
     // NIS (Normzlied Innovation Squared) 
     const double nis = z_diff.transpose() * S.inverse() * z_diff;
     static int n_outside = 0, n_inside = 0;
-    if (nis > 7.8) ++n_outside;
+    const double chi_square_5 = 5.991;
+    if (nis > chi_square_5) ++n_outside;
     else ++n_inside;
 
     const double ratioInside = double(n_inside) / (n_outside + n_inside) * 100;
-    cout << "Lidar Measurement Inside Ratio: " << ratioInside << "%" << endl;
+    cout << "Lidar NIS: " << ratioInside << "%" << endl;
 }
 
 /**
@@ -344,9 +348,10 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     // NIS (Normzlied Innovation Squared) 
     const double nis = z_diff.transpose() * S.inverse() * z_diff;
     static int n_outside = 0, n_inside = 0;
-    if (nis > 7.8) ++n_outside;
+    const double chi_square_5 = 7.815;
+    if (nis > chi_square_5) ++n_outside;
     else ++n_inside;
 
     const double ratioInside = double(n_inside) / (n_outside + n_inside) * 100;
-    cout << "Radar Measurement Inside Ratio: " << ratioInside << "%" << endl;
+    cout << "Radar NIS: " << ratioInside << "%" << endl;
 }
